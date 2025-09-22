@@ -1,0 +1,31 @@
+import cv2
+import torch
+import numpy as np
+
+# Load YOLOv5 model (from Ultralytics) for helmet detection
+model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
+model.classes = [1]  # Class 1: person; filter to detect person then helmet
+
+# Load custom helmet detection model weights if available
+# model = torch.hub.load('ultralytics/yolov5', 'custom', path='helmet_yolov5.pt')
+
+def detect_helmet(image_path):
+    img = cv2.imread(image_path)
+    results = model(img)
+    detections = results.pandas().xyxy[0]
+    for _, row in detections.iterrows():
+        xmin, ymin, xmax, ymax, conf, cls = row[['xmin','ymin','xmax','ymax','confidence','class']]
+        label = model.names[int(cls)]
+        color = (0,255,0) if label=='helmet' else (0,0,255)
+        cv2.rectangle(img, (int(xmin),int(ymin)), (int(xmax),int(ymax)), color, 2)
+        cv2.putText(img, f"{label} {conf:.2f}", (int(xmin), int(ymin)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
+    cv2.imshow('Helmet Detection', img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='Helmet Detection')
+    parser.add_argument('--image', type=str, required=True, help='Path to input image')
+    args = parser.parse_args()
+    detect_helmet(args.image)
